@@ -51,6 +51,20 @@ export function useFlashClock() {
   return now;
 }
 
+export function FlashPassWaitLabel({ reservation }: { reservation: FlashReservation }) {
+  const now = useFlashClock();
+  if (now == null) return <span>-- min</span>;
+  const start = new Date(reservation.returnStartAt).getTime();
+  const end = new Date(reservation.returnEndAt).getTime();
+  if (now < start) {
+    return <span>{formatCountdown(start - now)}</span>;
+  }
+  if (now < end) {
+    return <span>Scan {formatCountdown(end - now)}</span>;
+  }
+  return <span>Closed</span>;
+}
+
 export function FlashPassTimer({ reservation }: { reservation: FlashReservation }) {
   const now = useFlashClock();
   if (now == null) {

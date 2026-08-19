@@ -1,7 +1,7 @@
 "use client";
 
-import { ATTRACTION_STATUSES, STATUS_LABELS, canHoldFlashPass, canReportPosition, rideAcceptsNewFlashPass, siteByCode, type AttractionStatus, type LiveAttraction, type Operator } from "@/lib/theme-park";
-import { FlashPassTimer } from "./FlashPassTimer";
+import { ATTRACTION_STATUSES, STATUS_LABELS, canHoldFlashPass, canReportPosition, flashReturnWindow, rideAcceptsNewFlashPass, siteByCode, type AttractionStatus, type LiveAttraction, type Operator } from "@/lib/theme-park";
+import { FlashPassTimer, FlashPassWaitLabel } from "./FlashPassTimer";
 
 const TONE: Record<AttractionStatus, string> = {
   open: "border-ga-green/45 shadow-[0_0_28px_color-mix(in_oklab,var(--ga-green)_18%,transparent)]",
@@ -73,12 +73,18 @@ export function AttractionCard({
         </div>
         <div>
           <dt className={`text-[11px] uppercase tracking-wide ${inverted ? "text-white/60" : "text-ga-blue/70"}`}>
-            Flash Pass
+            Flash Pass return
           </dt>
           <dd>
-            {attraction.flashPassEligible
-              ? `${attraction.flashQueueCount} in virtual line`
-              : "Not on Flash Pass"}
+            {attraction.flashPassEligible ? (
+              attraction.myReservation ? (
+                <FlashPassWaitLabel reservation={attraction.myReservation} />
+              ) : (
+                `${flashReturnWindow(attraction.waitMinutes).virtualWait} min`
+              )
+            ) : (
+              "Not on Flash Pass"
+            )}
           </dd>
         </div>
         {canEdit ? (
