@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Six Flags Great Adventure — live ops wall (Jackson, NJ)
 
-## Getting Started
+Park operations board: attractions by status, radio event log, site/unit/person filters, and stale-position alerts. Two signed-in sessions share status over SSE without refresh.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router (product UI, Tailwind CSS)
+- Express on Node.js (`server/`) for domain routes
+- PostgreSQL (`attractions`, `status_snapshots`, `events`, `watchers`)
+
+## Run locally
+
+1. Start Postgres (Docker). This project maps to host port **5433** so it does not collide with other local Postgres instances on 5432:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Copy env values (optional; defaults match compose):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Install and start both processes:
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Open [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Demo roster password: `park1979`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Username   | Role |
+| ---------- | ---- |
+| `lead`     | Supervisor — full live data, can add attractions and check in anywhere |
+| `westops`  | Ride ops for Best of the West — can check in west units |
+| `forestops`| Ride ops for Enchanted Forest |
+| `wall`     | Guest wall — public statuses only (no evac/stale internals) |
 
-## Deploy on Vercel
+### MVP demo
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Sign in as `lead` in one browser window and as `westops` in another (or two `lead` sessions).
+2. On Rolling Thunder, change status or wait time and submit **Check in position**.
+3. The other window updates from the live stream — no reload.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## What is industry-specific
+
+- Statuses are park radio states (`cycling`, `weather_hold`, `evac`), not a generic open/closed flag.
+- **Stale positions**: if a ride that should be reporting goes quiet past its check-in window (90s on Lightnin' Loops, 2m on Rolling Thunder), the wall alerts.
+- **Who sees live data**: guest wall cannot see evac, hold reasons, trains on track, or operator names.
+- **Burst of events**: SSE coalesces rapid check-ins so the wall does not paint 24 individual messages during a weather hold.
+- Degraded connection UX if heartbeats stop.
+
+## API (Express)
+
+- `POST /api/auth/login` `POST /api/auth/logout` `GET /api/auth/me`
+- `GET/POST /api/attractions` `PATCH /api/attractions/:id` `POST /api/attractions/:id/status`
+- `GET /api/events`
+- `GET /api/watchers` `PUT /api/watchers/heartbeat`
+- `GET /api/stream` (SSE)

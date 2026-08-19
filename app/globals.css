@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ga-blue: #1c5fb8;
+  --ga-green: #2f9a4a;
+  --ga-sand: #f4efe3;
+  --ga-ink: #14345c;
+  --background: var(--ga-sand);
+  --foreground: var(--ga-ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ga-blue: var(--ga-blue);
+  --color-ga-green: var(--ga-green);
+  --color-ga-sand: var(--ga-sand);
+  --color-ga-ink: var(--ga-ink);
+  --font-sans: var(--font-sans);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--ga-sand);
+  background-image:
+    radial-gradient(900px 520px at 8% -8%, color-mix(in oklab, var(--ga-blue) 28%, white), transparent 60%),
+    radial-gradient(720px 480px at 108% 0%, color-mix(in oklab, var(--ga-green) 26%, white), transparent 58%),
+    linear-gradient(180deg, color-mix(in oklab, var(--ga-sand) 70%, white), var(--ga-sand));
+  color: var(--ga-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.ga-glass {
+  background: color-mix(in oklab, white 78%, var(--ga-sand));
+  border: 1px solid color-mix(in oklab, var(--ga-blue) 22%, white);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, white 70%, transparent),
+    0 18px 50px color-mix(in oklab, var(--ga-blue) 12%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.ga-glow {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ga-blue) 18%, white),
+    0 12px 40px color-mix(in oklab, var(--ga-blue) 18%, transparent);
+}
+
+.ga-field {
+  background: color-mix(in oklab, white 88%, var(--ga-sand));
+  border: 1px solid color-mix(in oklab, var(--ga-blue) 20%, white);
+  color: var(--ga-ink);
+}
+
+.ga-btn {
+  background: linear-gradient(135deg, var(--ga-blue), color-mix(in oklab, var(--ga-blue) 70%, var(--ga-green)));
+  color: white;
+  box-shadow: 0 10px 24px color-mix(in oklab, var(--ga-blue) 28%, transparent);
+}
+
+.ga-chip {
+  background: color-mix(in oklab, var(--ga-blue) 10%, white);
+  color: var(--ga-blue);
 }

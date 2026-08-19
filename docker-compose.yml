@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: greatadventure
+      POSTGRES_PASSWORD: greatadventure
+      POSTGRES_DB: greatadventure
+    ports:
+      - "5433:5432"
+    volumes:
+      - great_adventure_pg:/var/lib/postgresql/data
+
+volumes:
+  great_adventure_pg:
