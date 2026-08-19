@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, clientSessionId } from "@/lib/api";
-import type { LiveAttraction, Operator, ParkEvent } from "@/lib/theme-park";
+import type { FlashReservation, LiveAttraction, Operator, ParkEvent } from "@/lib/theme-park";
 import type { PresenceWatcher } from "@/components/PresenceRail";
 
 export type ConnectionState = "connecting" | "live" | "degraded" | "offline";
@@ -12,6 +12,7 @@ type StreamItem = {
   payload: {
     attraction?: LiveAttraction;
     event?: ParkEvent;
+    reservation?: FlashReservation;
   };
 };
 
@@ -31,9 +32,28 @@ export function useLiveBoard(operator: Operator | null) {
           const index = current.findIndex((row) => row.id === next.id);
           if (index === -1) return [next, ...current];
           const copy = current.slice();
-          copy[index] = { ...copy[index], ...next };
+          copy[index] = {
+            ...copy[index],
+            ...next,
+            myReservation: next.myReservation ?? copy[index].myReservation,
+          };
           return copy;
         });
+      }
+      if (item.type === "reservation.updated" && item.payload.reservation) {
+        const reservation = item.payload.reservation;
+        const active = reservation.status === "held" || reservation.status === "called";
+        setAttractions((current) =>
+          current.map((row) => {
+            if (row.id !== reservation.attractionId) return row;
+            const mine = row.myReservation?.id === reservation.id || active;
+            return {
+              ...row,
+              myReservation: active ? reservation : row.myReservation?.id === reservation.id ? null : row.myReservation,
+              flashQueueCount: mine ? row.flashQueueCount : row.flashQueueCount,
+            };
+          }),
+        );
       }
       if (item.type === "event.appended" && item.payload.event) {
         const next = item.payload.event;

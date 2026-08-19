@@ -3,13 +3,14 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import express from "express";
 import { migrate } from "./migrate";
-import { seedIfEmpty } from "./seed";
+import { seedIfEmpty, ensureFlashPassHolder } from "./seed";
 import { hub } from "./hub";
-import { sweepStalePositions, sweepWatchers } from "./sweep";
+import { sweepStalePositions, sweepWatchers, sweepFlashWindows } from "./sweep";
 import { authRouter } from "./routes/auth";
 import { attractionsRouter } from "./routes/attractions";
 import { eventsRouter } from "./routes/events";
 import { watchersRouter } from "./routes/watchers";
+import { reservationsRouter } from "./routes/reservations";
 import { streamRouter } from "./routes/stream";
 
 const app = express();
@@ -33,12 +34,14 @@ app.use("/api/auth", authRouter);
 app.use("/api/attractions", attractionsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/watchers", watchersRouter);
+app.use("/api/reservations", reservationsRouter);
 app.use("/api/stream", streamRouter);
 
 async function start() {
   try {
     await migrate();
     await seedIfEmpty();
+    await ensureFlashPassHolder();
   } catch (error) {
     console.error("PostgreSQL is required. Start it, then retry.");
     console.error(error);
@@ -53,6 +56,9 @@ async function start() {
   }, 15_000);
   setInterval(() => {
     void sweepWatchers();
+  }, 20_000);
+  setInterval(() => {
+    void sweepFlashWindows();
   }, 20_000);
 
   app.listen(port, () => {

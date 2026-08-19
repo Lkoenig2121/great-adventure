@@ -8,11 +8,15 @@ export function AttractionStatusList({
   operator,
   busyId,
   onReport,
+  onReserve,
+  onCancelReservation,
 }: {
   attractions: LiveAttraction[];
   operator: Operator;
   busyId: string | null;
   onReport: (id: string, body: Record<string, unknown>) => Promise<void>;
+  onReserve: (id: string) => Promise<void>;
+  onCancelReservation: (reservationId: string) => Promise<void>;
 }) {
   const sorted = [...attractions].sort((a, b) => {
     if (a.stale !== b.stale) return a.stale ? -1 : 1;
@@ -36,6 +40,8 @@ export function AttractionStatusList({
           operator={operator}
           busy={busyId === attraction.id}
           onReport={onReport}
+          onReserve={onReserve}
+          onCancelReservation={onCancelReservation}
         />
       ))}
     </div>

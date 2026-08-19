@@ -1,6 +1,7 @@
 import { hashPassword } from "./auth";
 import { query } from "./db";
 import type { AttractionKind, AttractionStatus, SiteCode } from "../lib/theme-park";
+import { kindAcceptsFlashPass } from "../lib/theme-park";
 
 const DEMO_PASSWORD = "park1979";
 
@@ -8,7 +9,7 @@ type SeedOperator = {
   id: string;
   username: string;
   displayName: string;
-  role: "guest_wall" | "ride_ops" | "supervisor";
+  role: "guest_wall" | "ride_ops" | "supervisor" | "flash_pass";
   siteCode: SiteCode | null;
   unitCode: string | null;
 };
@@ -58,6 +59,14 @@ const OPERATORS: SeedOperator[] = [
     username: "lead",
     displayName: "Pat Okonkwo — Park lead",
     role: "supervisor",
+    siteCode: null,
+    unitCode: null,
+  },
+  {
+    id: "55555555-5555-4555-8555-555555555555",
+    username: "flash",
+    displayName: "Jordan Hale — Gold Flash Pass",
+    role: "flash_pass",
     siteCode: null,
     unitCode: null,
   },
@@ -335,8 +344,8 @@ export async function seedIfEmpty() {
     await query(
       `INSERT INTO attractions (
         id, code, name, kind, site_code, unit_code, assigned_operator_id,
-        queue_capacity, stale_after_seconds, internal_notes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        queue_capacity, stale_after_seconds, internal_notes, flash_pass_eligible
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [
         id,
         attraction.code,
@@ -348,6 +357,7 @@ export async function seedIfEmpty() {
         attraction.queueCapacity,
         attraction.staleAfterSeconds,
         attraction.notes,
+        kindAcceptsFlashPass(attraction.kind),
       ],
     );
     const snapId = crypto.randomUUID();
@@ -378,4 +388,20 @@ export async function seedIfEmpty() {
       ],
     );
   }
+}
+
+export async function ensureFlashPassHolder() {
+  const existing = await query<{ id: string }>(
+    `SELECT id FROM operators WHERE username = 'flash'`,
+  );
+  if (existing.rows[0]) return;
+  await query(
+    `INSERT INTO operators (id, username, display_name, password_hash, role, site_code, unit_code)
+     VALUES ($1, 'flash', $2, $3, 'flash_pass', NULL, NULL)`,
+    [
+      "55555555-5555-4555-8555-555555555555",
+      "Jordan Hale — Gold Flash Pass",
+      await hashPassword(DEMO_PASSWORD),
+    ],
+  );
 }

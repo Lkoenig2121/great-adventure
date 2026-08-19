@@ -13,6 +13,7 @@ import {
   isStalePosition,
   publicStatusForRole,
 } from "../lib/theme-park";
+import { flashQueueCounts, listActiveReservations } from "./reservations";
 import { query } from "./db";
 
 type AttractionRow = {
@@ -27,6 +28,7 @@ type AttractionRow = {
   queue_capacity: number;
   stale_after_seconds: number;
   internal_notes: string | null;
+  flash_pass_eligible: boolean;
   status: AttractionStatus | null;
   wait_minutes: number | null;
   trains_on_track: number | null;
@@ -50,7 +52,7 @@ const ATTRACTION_SELECT = `
   SELECT
     a.id, a.code, a.name, a.kind, a.site_code, a.unit_code,
     a.assigned_operator_id, ao.display_name AS assigned_operator_name,
-    a.queue_capacity, a.stale_after_seconds, a.internal_notes,
+    a.queue_capacity, a.stale_after_seconds, a.internal_notes, a.flash_pass_eligible,
     s.status, s.wait_minutes, s.trains_on_track, s.hold_reason,
     s.reported_by_id, ro.display_name AS reported_by_name, s.captured_at
   FROM attractions a
@@ -92,6 +94,9 @@ export function toLiveAttraction(row: AttractionRow, role: OperatorRole, now = n
     stale: internal ? stale : false,
     staleForSeconds:
       internal && capturedAt ? Math.max(0, Math.floor((now.getTime() - capturedAt.getTime()) / 1000)) : 0,
+    flashPassEligible: Boolean(row.flash_pass_eligible),
+    flashQueueCount: 0,
+    myReservation: null,
   };
 }
 
@@ -120,7 +125,15 @@ export async function listAttractions(
 
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const result = await query<AttractionRow>(`${ATTRACTION_SELECT} ${where} ORDER BY a.name`, params);
-  let rows = result.rows.map((row) => toLiveAttraction(row, operator.role));
+  const counts = await flashQueueCounts();
+  const mine =
+    operator.role === "flash_pass" ? await listActiveReservations(operator.id) : [];
+  let rows = result.rows.map((row) => {
+    const live = toLiveAttraction(row, operator.role);
+    live.flashQueueCount = counts.get(live.id) ?? 0;
+    live.myReservation = mine.find((item) => item.attractionId === live.id) ?? null;
+    return live;
+  });
   if (filters.status) {
     rows = rows.filter((row) => row.publicStatus === filters.status || row.status === filters.status);
   }

@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import type { LiveAttraction, OperatorRole, ParkEvent } from "../lib/theme-park";
+import type { FlashReservation, LiveAttraction, OperatorRole, ParkEvent } from "../lib/theme-park";
 import { redactEventForRole, redactLiveAttraction } from "../lib/theme-park";
 
 export type HubMessage = {
@@ -13,6 +13,7 @@ type Client = {
   id: string;
   res: Response;
   role: OperatorRole;
+  operatorId: string;
 };
 
 const BURST_WINDOW_MS = 80;
@@ -24,8 +25,8 @@ class EventHub {
   private queue: HubMessage[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  subscribe(id: string, res: Response, role: OperatorRole) {
-    this.clients.set(id, { id, res, role });
+  subscribe(id: string, res: Response, role: OperatorRole, operatorId: string) {
+    this.clients.set(id, { id, res, role, operatorId });
   }
 
   unsubscribe(id: string) {
@@ -63,7 +64,7 @@ class EventHub {
     this.queue = [];
     const burst = batch.length > 5;
     for (const client of this.clients.values()) {
-      const items = batch.map((message) => this.forRole(message, client.role));
+      const items = batch.map((message) => this.forRole(message, client.role, client.operatorId));
       this.write(client.res, {
         id: items[items.length - 1]?.id,
         event: burst ? "burst" : "batch",
@@ -92,7 +93,7 @@ class EventHub {
     res.write(`data: ${JSON.stringify(message.data)}\n\n`);
   }
 
-  private forRole(message: HubMessage, role: OperatorRole): HubMessage {
+  private forRole(message: HubMessage, role: OperatorRole, operatorId: string): HubMessage {
     if (!message.payload || typeof message.payload !== "object") return message;
     const payload = { ...(message.payload as Record<string, unknown>) };
     if (payload.event) {
@@ -103,6 +104,12 @@ class EventHub {
         payload.attraction as LiveAttraction,
         role,
       );
+    }
+    if (payload.reservation && role === "flash_pass") {
+      const reservation = payload.reservation as FlashReservation;
+      if (reservation.holderId !== operatorId) {
+        delete payload.reservation;
+      }
     }
     return { ...message, payload };
   }

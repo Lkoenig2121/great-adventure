@@ -2,6 +2,7 @@ export const OPERATOR_ROLES = [
   "guest_wall",
   "ride_ops",
   "supervisor",
+  "flash_pass",
 ] as const;
 
 export type OperatorRole = (typeof OPERATOR_ROLES)[number];
@@ -39,6 +40,9 @@ export const EVENT_TYPES = [
   "presence",
   "attraction_created",
   "attraction_updated",
+  "flash_reserved",
+  "flash_cancelled",
+  "flash_expired",
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -103,6 +107,30 @@ export type Watcher = {
   lastSeenAt: string;
 };
 
+export const FLASH_RESERVATION_STATUSES = [
+  "held",
+  "called",
+  "cancelled",
+  "expired",
+  "redeemed",
+] as const;
+
+export type FlashReservationStatus = (typeof FLASH_RESERVATION_STATUSES)[number];
+
+export type FlashReservation = {
+  id: string;
+  attractionId: string;
+  attractionName: string;
+  attractionCode: string;
+  holderId: string;
+  holderName: string;
+  status: FlashReservationStatus;
+  partySize: number;
+  returnStartAt: string;
+  returnEndAt: string;
+  createdAt: string;
+};
+
 export type LiveAttraction = Attraction & {
   status: AttractionStatus;
   publicStatus: AttractionStatus;
@@ -115,11 +143,7 @@ export type LiveAttraction = Attraction & {
   capturedAt: string | null;
   stale: boolean;
   staleForSeconds: number;
-};
-
-export type AttractionFilters = {
-  site?: string;
-  unit?: string;
-  person?: string;
-  status?: string;
+  flashPassEligible: boolean;
+  flashQueueCount: number;
+  myReservation: FlashReservation | null;
 };

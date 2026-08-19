@@ -11,6 +11,7 @@ const ACCOUNTS = [
   { user: "westops", role: "Best of the West ride ops — can check in west units" },
   { user: "forestops", role: "Enchanted Forest ride ops" },
   { user: "wall", role: "Guest wall — public statuses only" },
+  { user: "flash", role: "Gold Flash Pass holder — reserve return times" },
 ];
 
 export function LoginForm() {

@@ -8,7 +8,12 @@ import type {
 } from "./types";
 
 export function canSeeLiveBoard(role: OperatorRole): boolean {
-  return role === "ride_ops" || role === "supervisor" || role === "guest_wall";
+  return (
+    role === "ride_ops" ||
+    role === "supervisor" ||
+    role === "guest_wall" ||
+    role === "flash_pass"
+  );
 }
 
 export function canSeeInternalLiveData(role: OperatorRole): boolean {
@@ -67,6 +72,7 @@ export function redactLiveAttraction(
     assignedOperatorName: internal ? attraction.assignedOperatorName : null,
     stale: internal ? attraction.stale : false,
     staleForSeconds: internal ? attraction.staleForSeconds : 0,
+    myReservation: role === "flash_pass" ? attraction.myReservation : null,
   };
 }
 
@@ -79,6 +85,10 @@ export function redactEventForRole(event: ParkEvent, role: OperatorRole): ParkEv
       message: "Attraction wait time refreshed",
       payload: {},
     };
+  }
+  if (event.type === "flash_reserved" || event.type === "flash_cancelled" || event.type === "flash_expired") {
+    if (role === "flash_pass") return event;
+    return { ...event, message: "Flash Pass return times updated", payload: {} };
   }
   if (event.type === "status_change") {
     const next = publicStatusForRole(

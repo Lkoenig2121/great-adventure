@@ -1,7 +1,7 @@
 "use client";
 
-import { ATTRACTION_STATUSES, STATUS_LABELS, siteByCode, type AttractionStatus, type LiveAttraction, type Operator } from "@/lib/theme-park";
-import { canReportPosition } from "@/lib/theme-park/access";
+import { ATTRACTION_STATUSES, STATUS_LABELS, canHoldFlashPass, canReportPosition, rideAcceptsNewFlashPass, siteByCode, type AttractionStatus, type LiveAttraction, type Operator } from "@/lib/theme-park";
+import { FlashPassTimer } from "./FlashPassTimer";
 
 const TONE: Record<AttractionStatus, string> = {
   open: "border-ga-green/45 shadow-[0_0_28px_color-mix(in_oklab,var(--ga-green)_18%,transparent)]",
@@ -28,15 +28,25 @@ export function AttractionCard({
   operator,
   busy,
   onReport,
+  onReserve,
+  onCancelReservation,
 }: {
   attraction: LiveAttraction;
   operator: Operator;
   busy: boolean;
   onReport: (id: string, body: Record<string, unknown>) => Promise<void>;
+  onReserve: (id: string) => Promise<void>;
+  onCancelReservation: (reservationId: string) => Promise<void>;
 }) {
   const canEdit = canReportPosition(operator, attraction);
+  const holder = canHoldFlashPass(operator.role);
   const shown = attraction.publicStatus;
   const inverted = shown === "evac";
+  const canReserve =
+    holder &&
+    attraction.flashPassEligible &&
+    !attraction.myReservation &&
+    rideAcceptsNewFlashPass(attraction.status);
 
   return (
     <article
@@ -63,19 +73,33 @@ export function AttractionCard({
         </div>
         <div>
           <dt className={`text-[11px] uppercase tracking-wide ${inverted ? "text-white/60" : "text-ga-blue/70"}`}>
-            Trains / boats
-          </dt>
-          <dd>{attraction.trainsOnTrack ?? "—"}</dd>
-        </div>
-        <div className="col-span-2">
-          <dt className={`text-[11px] uppercase tracking-wide ${inverted ? "text-white/60" : "text-ga-blue/70"}`}>
-            Last check-in
+            Flash Pass
           </dt>
           <dd>
-            {attraction.reportedByName ?? "Unknown"}{" "}
-            {attraction.capturedAt ? `· ${new Date(attraction.capturedAt).toLocaleTimeString()}` : ""}
+            {attraction.flashPassEligible
+              ? `${attraction.flashQueueCount} in virtual line`
+              : "Not on Flash Pass"}
           </dd>
         </div>
+        {canEdit ? (
+          <div>
+            <dt className={`text-[11px] uppercase tracking-wide ${inverted ? "text-white/60" : "text-ga-blue/70"}`}>
+              Trains / boats
+            </dt>
+            <dd>{attraction.trainsOnTrack ?? "—"}</dd>
+          </div>
+        ) : null}
+        {canEdit ? (
+          <div className="col-span-2">
+            <dt className={`text-[11px] uppercase tracking-wide ${inverted ? "text-white/60" : "text-ga-blue/70"}`}>
+              Last check-in
+            </dt>
+            <dd>
+              {attraction.reportedByName ?? "Unknown"}{" "}
+              {attraction.capturedAt ? `· ${new Date(attraction.capturedAt).toLocaleTimeString()}` : ""}
+            </dd>
+          </div>
+        ) : null}
         {attraction.holdReason ? (
           <div className="col-span-2">
             <dt className={`text-[11px] uppercase tracking-wide ${inverted ? "text-white/60" : "text-ga-blue/70"}`}>
@@ -85,6 +109,34 @@ export function AttractionCard({
           </div>
         ) : null}
       </dl>
+      {attraction.myReservation ? (
+        <div className="mt-3 border-t border-ga-blue/15 pt-3 text-sm">
+          <p className="font-semibold text-ga-green">Spot reserved</p>
+          <p className="text-xs text-ga-ink/70">
+            Return {new Date(attraction.myReservation.returnStartAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            –
+            {new Date(attraction.myReservation.returnEndAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </p>
+          <FlashPassTimer reservation={attraction.myReservation} />
+          <button
+            type="button"
+            disabled={busy}
+            className="mt-2 text-xs font-semibold text-ga-blue underline disabled:opacity-50"
+            onClick={() => void onCancelReservation(attraction.myReservation!.id)}
+          >
+            Release this return time
+          </button>
+        </div>
+      ) : canReserve ? (
+        <button
+          type="button"
+          disabled={busy}
+          className="ga-btn mt-3 w-full rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50"
+          onClick={() => void onReserve(attraction.id)}
+        >
+          {busy ? "Reserving…" : "Reserve Flash Pass spot"}
+        </button>
+      ) : null}
       {canEdit ? (
         <form
           className={`mt-3 grid gap-2 border-t pt-3 ${inverted ? "border-white/20" : "border-ga-blue/15"}`}

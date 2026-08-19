@@ -23,7 +23,7 @@ streamRouter.get("/", async (req, res) => {
   res.flushHeaders?.();
 
   const clientId = crypto.randomUUID();
-  hub.subscribe(clientId, res, operator.role);
+  hub.subscribe(clientId, res, operator.role, operator.id);
   hub.write(res, {
     event: "hello",
     data: {

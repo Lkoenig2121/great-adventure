@@ -39,6 +39,7 @@ Demo roster password: `park1979`
 | `westops`  | Ride ops for Best of the West — can check in west units |
 | `forestops`| Ride ops for Enchanted Forest |
 | `wall`     | Guest wall — public statuses only (no evac/stale internals) |
+| `flash`    | Gold Flash Pass holder — reserve return times (max 2) |
 
 ### MVP demo
 
@@ -52,6 +53,7 @@ Demo roster password: `park1979`
 - **Stale positions**: if a ride that should be reporting goes quiet past its check-in window (90s on Lightnin' Loops, 2m on Rolling Thunder), the wall alerts.
 - **Who sees live data**: guest wall cannot see evac, hold reasons, trains on track, or operator names.
 - **Burst of events**: SSE coalesces rapid check-ins so the wall does not paint 24 individual messages during a weather hold.
+- **Flash Pass**: holders reserve a return window (about 40% of standby, 15-minute scan window). Gold plan caps 2 active rides. Dining, shows, and guest services stay off the product.
 - Degraded connection UX if heartbeats stop.
 
 ## API (Express)
@@ -60,4 +62,5 @@ Demo roster password: `park1979`
 - `GET/POST /api/attractions` `PATCH /api/attractions/:id` `POST /api/attractions/:id/status`
 - `GET /api/events`
 - `GET /api/watchers` `PUT /api/watchers/heartbeat`
+- `GET/POST /api/reservations` `POST /api/reservations/:id/cancel`
 - `GET /api/stream` (SSE)

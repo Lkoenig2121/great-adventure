@@ -2,6 +2,7 @@ import { STATUS_LABELS } from "../lib/theme-park";
 import { query } from "./db";
 import { hub } from "./hub";
 import { getAttractionRow, insertEvent, toLiveAttraction } from "./queries";
+import { expireDueReservations } from "./reservations";
 
 const staleAlerted = new Set<string>();
 
@@ -38,4 +39,18 @@ export async function sweepStalePositions() {
 
 export async function sweepWatchers() {
   await query(`DELETE FROM watchers WHERE last_seen_at < NOW() - INTERVAL '2 minutes'`);
+}
+
+export async function sweepFlashWindows() {
+  const expired = await expireDueReservations();
+  for (const reservation of expired) {
+    const event = await insertEvent({
+      attractionId: reservation.attractionId,
+      type: "flash_expired",
+      message: `Flash Pass window expired for ${reservation.attractionName} (${reservation.holderName})`,
+      payload: { reservationId: reservation.id },
+    });
+    hub.publish("reservation.updated", { reservation });
+    hub.publish("event.appended", { event });
+  }
 }

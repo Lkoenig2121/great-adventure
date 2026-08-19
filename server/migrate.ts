@@ -7,7 +7,7 @@ export async function migrate() {
       username TEXT UNIQUE NOT NULL,
       display_name TEXT NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('guest_wall', 'ride_ops', 'supervisor')),
+      role TEXT NOT NULL CHECK (role IN ('guest_wall', 'ride_ops', 'supervisor', 'flash_pass')),
       site_code TEXT,
       unit_code TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -72,5 +72,29 @@ export async function migrate() {
       last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (operator_id, session_id)
     );
+
+    ALTER TABLE operators DROP CONSTRAINT IF EXISTS operators_role_check;
+    ALTER TABLE operators ADD CONSTRAINT operators_role_check
+      CHECK (role IN ('guest_wall', 'ride_ops', 'supervisor', 'flash_pass'));
+
+    ALTER TABLE attractions ADD COLUMN IF NOT EXISTS flash_pass_eligible BOOLEAN NOT NULL DEFAULT FALSE;
+    UPDATE attractions
+      SET flash_pass_eligible = TRUE
+      WHERE kind IN ('coaster', 'water', 'flat', 'family', 'transport');
+
+    CREATE TABLE IF NOT EXISTS line_reservations (
+      id UUID PRIMARY KEY,
+      attraction_id UUID NOT NULL REFERENCES attractions(id) ON DELETE CASCADE,
+      holder_id UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+      status TEXT NOT NULL CHECK (status IN ('held', 'called', 'cancelled', 'expired', 'redeemed')),
+      party_size INTEGER NOT NULL DEFAULT 1,
+      return_start_at TIMESTAMPTZ NOT NULL,
+      return_end_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS line_reservations_active_idx
+      ON line_reservations (attraction_id, holder_id)
+      WHERE status IN ('held', 'called');
   `);
 }

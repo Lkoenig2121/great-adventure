@@ -24,7 +24,7 @@ authRouter.post("/login", async (req, res) => {
     username: string;
     display_name: string;
     password_hash: string;
-    role: "guest_wall" | "ride_ops" | "supervisor";
+    role: "guest_wall" | "ride_ops" | "supervisor" | "flash_pass";
     site_code: string | null;
     unit_code: string | null;
   }>(

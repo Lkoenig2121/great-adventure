@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { canCreateAttraction, siteByCode, type Operator } from "@/lib/theme-park";
+import { canCreateAttraction, canHoldFlashPass, siteByCode, type Operator } from "@/lib/theme-park";
+import { FlashPassPanel } from "./FlashPassPanel";
 import { AddAttractionForm } from "./AddAttractionForm";
 import { AttractionStatusList } from "./AttractionStatusList";
 import { BoardFilters, type Filters } from "./BoardFilters";
@@ -65,6 +66,7 @@ export function StatusBoard({ operator }: { operator: Operator }) {
           </h1>
           <p className="mt-1 text-sm text-ga-ink/70">
             Signed in as <span className="font-bold text-ga-blue">{operator.displayName}</span>
+            {operator.role === "flash_pass" ? " · Gold Flash Pass" : ""}
             {operator.siteCode ? ` · ${siteByCode(operator.siteCode)?.name}` : ""}
           </p>
         </div>
@@ -117,8 +119,79 @@ export function StatusBoard({ operator }: { operator: Operator }) {
               setBusyId(null);
             }
           }}
+          onReserve={async (id) => {
+            setBusyId(id);
+            setError(null);
+            try {
+              const data = await api<{
+                attraction: (typeof attractions)[number];
+                reservation: NonNullable<(typeof attractions)[number]["myReservation"]>;
+              }>("/api/reservations", {
+                method: "POST",
+                body: JSON.stringify({ attractionId: id, partySize: 1 }),
+              });
+              setAttractions((current) =>
+                current.map((row) =>
+                  row.id === id
+                    ? { ...row, ...data.attraction, myReservation: data.reservation }
+                    : row,
+                ),
+              );
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Could not reserve a return time");
+            } finally {
+              setBusyId(null);
+            }
+          }}
+          onCancelReservation={async (reservationId) => {
+            setBusyId(reservationId);
+            setError(null);
+            try {
+              const data = await api<{ attraction: (typeof attractions)[number] }>(
+                `/api/reservations/${reservationId}/cancel`,
+                { method: "POST" },
+              );
+              setAttractions((current) =>
+                current.map((row) =>
+                  row.myReservation?.id === reservationId
+                    ? { ...row, ...data.attraction, myReservation: null }
+                    : row.id === data.attraction.id
+                      ? { ...row, ...data.attraction, myReservation: null }
+                      : row,
+                ),
+              );
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Could not release that return time");
+            } finally {
+              setBusyId(null);
+            }
+          }}
         />
         <div className="flex flex-col gap-4">
+          {canHoldFlashPass(operator.role) ? (
+            <FlashPassPanel
+              reservations={attractions
+                .map((item) => item.myReservation)
+                .filter((item): item is NonNullable<typeof item> => Boolean(item))}
+              busyId={busyId}
+              onCancel={async (reservationId) => {
+                setBusyId(reservationId);
+                setError(null);
+                try {
+                  await api(`/api/reservations/${reservationId}/cancel`, { method: "POST" });
+                  setAttractions((current) =>
+                    current.map((row) =>
+                      row.myReservation?.id === reservationId ? { ...row, myReservation: null } : row,
+                    ),
+                  );
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Could not release that return time");
+                } finally {
+                  setBusyId(null);
+                }
+              }}
+            />
+          ) : null}
           <PresenceRail watchers={watchers} />
           <EventLog events={events} />
         </div>
